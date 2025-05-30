@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forest Management Information System</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <!-- Leaflet CSS and JS CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+    }
+    .navbar {
+      background-color: #1e88e5;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .navbar a {
+      color: white;
+      text-decoration: none;
+      margin: 0 1rem;
+      font-weight: bold;
+    }
+    .navbar a:hover {
+      color: #bbdefb;
+    }
+    .navbar .title {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: 1rem;
+      padding: 1rem;
+      height: calc(100vh - 60px);
+    }
+    .stats, .map, .chart {
+      background-color: white;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      padding: 1rem;
+    }
+    .map {
+      height: 100%;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+    .stats ul {
+      list-style: none;
+      padding: 0;
+    }
+    .stats li {
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }
+    .stats li span {
+      font-weight: bold;
+      color: #1e88e5;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation Bar -->
+  <div class="navbar">
+    <div class="title">Forest Management Information System</div>
+    <div>
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+      <a href="dashboard.html">Login</a>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container">
+    <!-- Stats Section -->
+    <div class="stats">
+      <h2 class="text-lg font-semibold mb-4">Forest Statistics (2023)</h2>
+      <ul>
+        <li>Total Forest Area: <span>24,305 km²</span></li>
+        <li>Very Dense Forest: <span>4,587 km² (18.9%)</span></li>
+        <li>Moderately Dense Forest: <span>12,221 km² (50.3%)</span></li>
+        <li>Open Forest: <span>7,497 km² (30.8%)</span></li>
+      </ul>
+    </div>
+
+    <!-- Map Section -->
+    <div class="map">
+      <div id="map"></div>
+    </div>
+
+    <!-- Bar Chart Section -->
+    <div class="chart">
+      <canvas id="densityChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Leaflet Map Script -->
+  <script>
+    // Initialize the map
+    const map = L.map('map').setView([30.3165, 78.0322], 8); // Centered on Uttarakhand
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Placeholder GeoJSON for forest density (you would replace this with actual FSI data)
+    const forestDensity = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[78.0, 30.0], [78.5, 30.0], [78.5, 30.5], [78.0, 30.5], [78.0, 30.0]]]
+          },
+          "properties": {
+            "density": "Very Dense",
+            "area": "4587 km²"
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[78.5, 30.5], [79.0, 30.5], [79.0, 31.0], [78.5, 31.0], [78.5, 30.5]]]
+          },
+          "properties": {
+            "density": "Moderately Dense",
+            "area": "12221 km²"
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[78.0, 29.5], [78.5, 29.5], [78.5, 30.0], [78.0, 30.0], [78.0, 29.5]]]
+          },
+          "properties": {
+            "density": "Open Forest",
+            "area": "7497 km²"
+          }
+        }
+      ]
+    };
+
+    // Style function for forest density layers
+    function getColor(density) {
+      return density === 'Very Dense' ? '#2E7D32' :
+             density === 'Moderately Dense' ? '#81C784' :
+             density === 'Open Forest' ? '#FFCA28' : '#B0BEC5';
+    }
+
+    L.geoJSON(forestDensity, {
+      style: function(feature) {
+        return {
+          fillColor: getColor(feature.properties.density),
+          weight: 2,
+          opacity: 1,
+          color: 'white',
+          fillOpacity: 0.7
+        };
+      },
+      onEachFeature: function(feature, layer) {
+        layer.bindPopup(`<b>${feature.properties.density}</b><br>Area: ${feature.properties.area}`);
+      }
+    }).addTo(map);
+
+    // Placeholder for administrative boundaries (state and divisions)
+    const adminBoundaries = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[77.5, 29.0], [80.0, 29.0], [80.0, 31.5], [77.5, 31.5], [77.5, 29.0]]]
+          },
+          "properties": {
+            "name": "Uttarakhand"
+          }
+        }
+      ]
+    };
+
+    L.geoJSON(adminBoundaries, {
+      style: {
+        color: '#1E88E5',
+        weight: 2,
+        fillOpacity: 0
+      },
+      onEachFeature: function(feature, layer) {
+        layer.bindPopup(`<b>${feature.properties.name}</b>`);
+      }
+    }).addTo(map);
+
+    // Add a legend
+    const legend = L.control({ position: 'bottomright' });
+    legend.onAdd = function() {
+      const div = L.DomUtil.create('div', 'info legend');
+      const densities = ['Very Dense', 'Moderately Dense', 'Open Forest'];
+      const colors = ['#2E7D32', '#81C784', '#FFCA28'];
+      div.innerHTML = '<strong>Forest Density</strong><br>';
+      for (let i = 0; i < densities.length; i++) {
+        div.innerHTML += `<i style="background:${colors[i]};width:18px;height:18px;display:inline-block;"></i> ${densities[i]}<br>`;
+      }
+      return div;
+    };
+    legend.addTo(map);
+  </script>
+
+  <!-- Chart.js Script for Bar Chart -->
+  <script>
+    const ctx = document.getElementById('densityChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Very Dense', 'Moderately Dense', 'Open Forest'],
+        datasets: [
+          {
+            label: 'Garhwal',
+            data: [37.8, 44.9, 15.7],
+            backgroundColor: '#ef5350',
+          },
+          {
+            label: 'Kumaun',
+            data: [47.4, 39.4, 11.7],
+            backgroundColor: '#42a5f5',
+          },
+          {
+            label: 'Wildlife',
+            data: [37.9, 41.0, 19.6],
+            backgroundColor: '#66bb6a',
+          }
+        ]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Percentage (%)'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Forest Density'
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'top'
+          },
+          title: {
+            display: true,
+            text: 'Forest Density Distribution (2023)'
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
