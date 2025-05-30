@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Forest Management Information System</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Link to the compiled Tailwind CSS file -->
+  <link rel="stylesheet" href="dist/output.css">
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
   <!-- Leaflet CSS and JS CDN -->
@@ -180,7 +180,7 @@
 
   <!-- Main Content -->
   <div class="container">
-    <!-- Left Panel: Dropdowns and Stats (Previously Right Panel) -->
+    <!-- Left Panel: Dropdowns and Stats -->
     <div class="stats">
       <!-- Dropdown Palette -->
       <div class="palette">
@@ -232,10 +232,14 @@
           Open Forest
           <input type="checkbox" id="openForestToggle" checked>
         </label>
+        <label>
+          Tree Cover Loss
+          <input type="checkbox" id="treeCoverLossToggle" checked>
+        </label>
       </div>
     </div>
 
-    <!-- Right Panel: Bar Chart and Table (Previously Left Panel) -->
+    <!-- Right Panel: Bar Chart and Table -->
     <div class="chart-table-container">
       <div class="chart">
         <canvas id="densityChart"></canvas>
@@ -449,7 +453,7 @@
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Placeholder GeoJSON for forest density (you would replace this with actual FSI data)
+    // Placeholder GeoJSON for forest density (replace with actual FSI data)
     const forestDensity = {
       "type": "FeatureCollection",
       "features": [
@@ -488,6 +492,135 @@
         }
       ]
     };
+
+    // Placeholder GeoJSON for tree cover loss (used as fallback)
+    let treeCoverLoss = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[78.2, 30.1], [78.3, 30.1], [78.3, 30.2], [78.2, 30.2], [78.2, 30.1]]]
+          },
+          "properties": {
+            "loss_year": "2023",
+            "area_lost": "50 ha"
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[78.6, 30.6], [78.7, 30.6], [78.7, 30.7], [78.6, 30.7], [78.6, 30.6]]]
+          },
+          "properties": {
+            "loss_year": "2022",
+            "area_lost": "30 ha"
+          }
+        }
+      ]
+    };
+
+    // Variable to store the tree cover loss layer
+    let treeCoverLossLayer = null;
+
+    // Fetch tree cover loss data from GFW API
+    async function fetchTreeCoverLoss() {
+      try {
+        // Check if the browser allows the fetch (CORS preflight)
+        const response = await fetch('https://production-api.globalforestwatch.org/v1/dataset?app=gfw&includes=layer,vocabulary,metadata', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            // Replace <your-token> with your actual GFW API key
+            'Authorization': 'Bearer <your-token>'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('GFW Datasets:', data);
+
+        // Find the tree cover loss dataset ID (replace with actual ID)
+        const treeCoverLossDatasetId = 'umd-tree-cover-loss'; // Replace with actual dataset ID
+
+        // Define Uttarakhand bounding box
+        const uttarakhandBbox = {
+          type: "Polygon",
+          coordinates: [[[77.5, 29.0], [80.0, 29.0], [80.0, 31.5], [77.5, 31.5], [77.5, 29.0]]]
+        };
+
+        // Fetch the tree cover loss data for Uttarakhand
+        const treeCoverLossResponse = await fetch(`https://production-api.globalforestwatch.org/v1/query/${treeCoverLossDatasetId}?geojson=${JSON.stringify(uttarakhandBbox)}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer <your-token>'
+          }
+        });
+
+        if (!treeCoverLossResponse.ok) {
+          throw new Error(`HTTP error! Status: ${treeCoverLossResponse.status} ${treeCoverLossResponse.statusText}`);
+        }
+
+        const treeCoverLossData = await treeCoverLossResponse.json();
+        console.log('Tree Cover Loss Data:', treeCoverLossData);
+
+        // Process the data into GeoJSON format if necessary
+        if (treeCoverLossData && treeCoverLossData.data) {
+          treeCoverLoss = {
+            type: "FeatureCollection",
+            features: treeCoverLossData.data.map(item => ({
+              type: "Feature",
+              geometry: item.geojson || item.geometry,
+              properties: {
+                loss_year: item.year || 'Unknown',
+                area_lost: item.area || 'Unknown'
+              }
+            }))
+          };
+        }
+
+      } catch (error) {
+        console.error('Error fetching GFW data:', error);
+        console.log('Using fallback tree cover loss data.');
+      }
+
+      // Add tree cover loss layer to the map
+      treeCoverLossLayer = L.geoJSON(treeCoverLoss, {
+        style: function() {
+          return {
+            fillColor: '#FF0000', // Red for tree cover loss
+            weight: 2,
+            opacity: 1,
+            color: 'white',
+            fillOpacity: 0.7
+          };
+        },
+        onEachFeature: function(feature, layer) {
+          layer.bindPopup(`<b>Tree Cover Loss</b><br>Year: ${feature.properties.loss_year}<br>Area Lost: ${feature.properties.area_lost}`);
+        }
+      }).addTo(map);
+
+      // Update toggle functionality
+      const treeCoverLossToggle = document.getElementById('treeCoverLossToggle');
+      if (treeCoverLossToggle) {
+        treeCoverLossToggle.addEventListener('change', function(e) {
+          if (e.target.checked) {
+            treeCoverLossLayer.addTo(map);
+          } else {
+            map.removeLayer(treeCoverLossLayer);
+          }
+        });
+      }
+    }
+
+    // Call the function to fetch data
+    fetchTreeCoverLoss();
 
     // Style function for forest density layers
     function getColor(density) {
@@ -574,9 +707,9 @@
     const legend = L.control({ position: 'bottomright' });
     legend.onAdd = function() {
       const div = L.DomUtil.create('div', 'info legend');
-      const densities = ['Very Dense', 'Moderately Dense', 'Open Forest'];
-      const colors = ['#2E7D32', '#81C784', '#FFCA28'];
-      div.innerHTML = '<strong>Forest Density</strong><br>';
+      const densities = ['Very Dense', 'Moderately Dense', 'Open Forest', 'Tree Cover Loss'];
+      const colors = ['#2E7D32', '#81C784', '#FFCA28', '#FF0000'];
+      div.innerHTML = '<strong>Forest Layers</strong><br>';
       for (let i = 0; i < densities.length; i++) {
         div.innerHTML += `<i style="background:${colors[i]};"></i> ${densities[i]}<br>`;
       }
@@ -584,7 +717,7 @@
     };
     legend.addTo(map);
 
-    // Layer toggle functionality
+    // Layer toggle functionality for forest density layers
     document.getElementById('veryDenseToggle').addEventListener('change', function(e) {
       if (e.target.checked) {
         veryDenseLayer.addTo(map);
