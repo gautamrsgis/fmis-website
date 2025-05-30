@@ -51,11 +51,45 @@
       padding: 1rem;
     }
     .map {
+      position: relative;
       height: 100%;
     }
     #map {
-      height: 100%;
+      height: calc(100% - 40px); /* Adjusted for the bottom toggle */
       width: 100%;
+    }
+    .palette {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background-color: rgba(255, 255, 255, 0.9);
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+    }
+    .palette select {
+      width: 100%;
+      margin-bottom: 5px;
+      padding: 5px;
+      border: 1px solid #1e88e5;
+      border-radius: 3px;
+      background-color: #f4f4f4;
+    }
+    .layer-toggle {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #1e88e5;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 1000;
+    }
+    .layer-toggle:hover {
+      background-color: #1565c0;
     }
     .stats ul {
       list-style: none;
@@ -68,6 +102,19 @@
     .stats li span {
       font-weight: bold;
       color: #1e88e5;
+    }
+    .legend {
+      background-color: white;
+      padding: 5px;
+      border-radius: 3px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      font-size: 12px;
+    }
+    .legend i {
+      width: 18px;
+      height: 18px;
+      display: inline-block;
+      margin-right: 5px;
     }
   </style>
 </head>
@@ -98,7 +145,33 @@
 
     <!-- Map Section -->
     <div class="map">
+      <!-- Dropdown Palette -->
+      <div class="palette">
+        <select id="year">
+          <option value="2023">2023</option>
+          <option value="2022">2022</option>
+          <option value="2021">2021</option>
+        </select>
+        <select id="zone">
+          <option value="all">All Zones</option>
+          <option value="north">North Zone</option>
+          <option value="south">South Zone</option>
+        </select>
+        <select id="circle">
+          <option value="all">All Circles</option>
+          <option value="circle1">Circle 1</option>
+          <option value="circle2">Circle 2</option>
+        </select>
+        <select id="division">
+          <option value="all">All Divisions</option>
+          <option value="garhwal">Garhwal</option>
+          <option value="kumaun">Kumaun</option>
+          <option value="wildlife">Wildlife</option>
+        </select>
+      </div>
       <div id="map"></div>
+      <!-- Layer Toggle -->
+      <div class="layer-toggle" id="layerToggle">Hide Forest Density</div>
     </div>
 
     <!-- Bar Chart Section -->
@@ -163,7 +236,8 @@
              density === 'Open Forest' ? '#FFCA28' : '#B0BEC5';
     }
 
-    L.geoJSON(forestDensity, {
+    // Add forest density layer
+    const forestDensityLayer = L.geoJSON(forestDensity, {
       style: function(feature) {
         return {
           fillColor: getColor(feature.properties.density),
@@ -214,11 +288,26 @@
       const colors = ['#2E7D32', '#81C784', '#FFCA28'];
       div.innerHTML = '<strong>Forest Density</strong><br>';
       for (let i = 0; i < densities.length; i++) {
-        div.innerHTML += `<i style="background:${colors[i]};width:18px;height:18px;display:inline-block;"></i> ${densities[i]}<br>`;
+        div.innerHTML += `<i style="background:${colors[i]};"></i> ${densities[i]}<br>`;
       }
       return div;
     };
     legend.addTo(map);
+
+    // Layer toggle functionality
+    let isLayerVisible = true;
+    const layerToggle = document.getElementById('layerToggle');
+    layerToggle.addEventListener('click', function() {
+      if (isLayerVisible) {
+        map.removeLayer(forestDensityLayer);
+        layerToggle.textContent = 'Show Forest Density';
+        isLayerVisible = false;
+      } else {
+        forestDensityLayer.addTo(map);
+        layerToggle.textContent = 'Hide Forest Density';
+        isLayerVisible = true;
+      }
+    });
   </script>
 
   <!-- Chart.js Script for Bar Chart -->
